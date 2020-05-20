@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Home</title>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+</head>
+<body>
+  <h3>Image list</h3>
+  {% for image in images %}
+    <div>
+      <p>{{ image[0] }}</p>
+      <p>{{ image[1] }}</p>
+    </div>
+  {% endfor %}
+</body>
+</html>

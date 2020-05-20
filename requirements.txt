@@ -1,0 +1,5 @@
+flask
+pytest
+requests
+passlib
+flask_httpauth

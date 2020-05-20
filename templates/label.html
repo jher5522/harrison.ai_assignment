@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Label</title>
+</head>
+<body>
+  <h3>Label by id</h3>
+  <div>
+    <p>Label id: {{ label_id }}</p>
+    <p>Image id: {{ image_id }}</p>
+    <p>{{ first_name }} {{ last_name }}</p>
+    <p>{{ image_path }}</p>
+    <p>{{ geometry }}</p>
+    <p>{{ annotation }}</p>
+  </div>
+ 
+  <form action="/label_delete/{{ label_id }}">
+    <input type="submit" value="Delete" />
+  </form>
+</body>
+</html>
