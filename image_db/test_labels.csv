@@ -1,0 +1,5 @@
+image_id, labelled_by, annotation, geometry
+1, rock_god_9000, Tumor, Top left
+3, rock_god_9000, Cyst, Middle
+2, noot_noot, Fracture, Bottom
+1, noot_noot, Toe, In stomach

@@ -1,9 +1,56 @@
 import sqlite3
 import os
+import csv
 from glob import glob
 from pathlib import Path
 from werkzeug.security import generate_password_hash, check_password_hash
 
+
+
+
+
+## insert data
+
+def csv_to_list_dicts(data_csv):
+	with open(data_csv, 'r') as f:
+		data = [{k: v for k, v in row.items()}
+			for row in csv.DictReader(f, skipinitialspace=True)]
+	return data
+
+def insert_test_data(cur, users_csv, labels_csv):
+	insert_image_data(cur)
+	insert_users_data(cur, users_csv=users_csv)
+	insert_labels_data(cur, labels_csv=labels_csv)
+
+def insert_image_data(cur):
+	# Insert every jpeg in the static/images folder into the db
+	data_dir = Path(__file__).absolute().parent.parent.joinpath('static', 'images')
+	for image_name in sorted(data_dir.rglob("*.jpeg")):
+		image_path = image_name.relative_to(data_dir)
+		cur.execute(f"INSERT INTO Images (image_path) VALUES ('{image_path}')")
+
+def insert_users_data(cur, users_csv):
+	data = csv_to_list_dicts(users_csv)
+	
+	for row in data:
+		cur.execute(f"""INSERT INTO Users (username, first_name, last_name, pwd_hash) 
+			VALUES (
+			'{row['user_name']}', 
+			'{row['first_name']}', 
+			'{row['last_name']}', 
+			'{generate_password_hash(row['password'])}'
+			)""")
+
+def insert_labels_data(cur, labels_csv):
+	data = csv_to_list_dicts(labels_csv)
+
+	for row in data:
+		cur.execute(f"""INSERT INTO Labels (image_id, labelled_by, annotation, geometry) 
+			VALUES ({int(row['image_id'])}, '{row['labelled_by']}', '{row['annotation']}', '{row['geometry']}')""")
+
+
+
+### Create the DB
 
 def create_tables(cur):
 	cur.execute('''
@@ -29,32 +76,6 @@ def create_tables(cur):
 		)''')
 	return
 
-def insert_image_data(cur):
-	data_dir = Path(__file__).absolute().parent.parent.joinpath('static', 'images')
-	for image_name in data_dir.rglob("*.jpeg"):
-		image_path = image_name.relative_to(data_dir)
-		cur.execute(f"INSERT INTO Images (image_path) VALUES ('{image_path}')")
-
-def insert_users_data(cur):
-	example_users = (
-		('rock_god_9000', 'Jimi', 'Hendrix', generate_password_hash('voodoochild')),
-		('marko', 'Mark', 'Twain', generate_password_hash('booksRgood')),
-		('noot_noot', 'George', 'Bush', generate_password_hash('i_r_winner'))
-		)
-	for user_name, first, last, pwd_hash in example_users:
-		cur.execute(f"""INSERT INTO Users (username, first_name, last_name, pwd_hash) 
-			VALUES ('{user_name}', '{first}', '{last}', '{pwd_hash}')""")
-
-def insert_labels_data(cur):
-	example_labels = (
-		(1, "rock_god_9000", 'Tumor', 'Top left'),
-		(3, "rock_god_9000", 'Cyst', 'Middle'),
-		(2, "noot_noot", 'Fracture', 'Bottom'),
-		(1, "noot_noot", 'Toe', 'In stomach')
-		)
-	for example in example_labels:
-		cur.execute(f"""INSERT INTO Labels (image_id, labelled_by, annotation, geometry) 
-			VALUES ({example[0]}, '{example[1]}', '{example[2]}', '{example[3]}')""")
 
 def create_db(db_file):
 	# remove existing db file, create fresh one
@@ -65,13 +86,15 @@ def create_db(db_file):
 	cur = conn.cursor()
 
 	create_tables(cur)
-	insert_image_data(cur)
-	insert_users_data(cur)
-	insert_labels_data(cur)
+	insert_test_data(cur, 
+		users_csv=Path(__file__).absolute().parent.joinpath('test_users.csv'),
+		labels_csv=Path(__file__).absolute().parent.joinpath('test_labels.csv')
+		)
 	conn.commit()
 
+
 if __name__ == '__main__':
-	db_file = Path(__file__).absolute().parent.joinpath('image_db.sqlite')
+	db_file = Path(__file__).absolute().parent.joinpath('test_db.sqlite')
 	create_db(db_file)
 
 	conn = sqlite3.connect(db_file)
@@ -79,4 +102,3 @@ if __name__ == '__main__':
 	print(cur.execute('SELECT * FROM Images').fetchall())
 	print(cur.execute('SELECT * FROM Users').fetchall())
 	print(cur.execute('SELECT * FROM Labels').fetchall())
-	print(cur.execute(f"SELECT pwd_hash FROM Users WHERE username='rock_god_9000'").fetchone()[0])
