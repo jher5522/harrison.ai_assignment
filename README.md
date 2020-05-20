@@ -33,6 +33,7 @@ Make geometry in labels table
 Make class table which labels references
 Log removal instead of actually delete
 Parameterise tests
+Check new images have image extension
 
 don't use fstrings to create sql querys, use prepared statements and send tuple of args
 Delete labels when you delete an image

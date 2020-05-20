@@ -7,6 +7,11 @@ import os
 from pathlib import Path
 
 
+STATUS_OK = 200
+STATUS_BAD_REQUEST = 400
+STATUS_NOT_FOUND = 410
+STATUS_INTERNAL_ERROR = 500
+
 
 app = Flask(__name__)
 auth = HTTPBasicAuth()
@@ -21,35 +26,65 @@ def search_bar():
 
 
 
+@app.route('/image/<int:image_id>', methods=["GET", "DELETE"])
 @app.route('/image', methods=["POST"])
 @auth.login_required
-def image_create():
-	pass
-
-@app.route('/image/<int:image_id>', methods=["GET", "DELETE"])
-@auth.login_required
-def image(image_id):
+def image(image_id=None):
+	print("in image")
 	cur, conn = get_db()
 	
 	if request.method == "GET":
 		result = cur.execute(f"SELECT image_id, image_path FROM Images WHERE image_id={image_id}").fetchone()
 		if result is None:
-			return "Image not found", 500
+			return "Image not found", 410
 
 		image_id, image_path = result
 		return json.dumps({'image_id': image_id, 'image_path': image_path})
 	
+
 	elif request.method ==  "DELETE":
 		r = cur.execute(f"DELETE FROM Images WHERE image_id={image_id}")
 		if r.rowcount ==0:
-			return "Nothing to delete", 500
+			return "Nothing to delete", STATUS_NOT_FOUND
 		conn.commit()
 		return "deleted"
 
 
-@app.route('/label/<int:label_id>', methods=['GET', 'DELETE', 'POST'])
+	elif request.method == 'POST':
+		print(request.values)
+		# To insert a new image into the db, you should copy the image into the 'static/images' directory
+		# and use this API to insert it into the db
+		image_path = request.values.to_dict()['image_dir']
+		print(image_path)
+
+		# check its in static/images
+		images_dir = Path(__file__).absolute().parent.joinpath('static', 'images')
+		provided_path = Path(image_path).absolute()
+		if not images_dir in provided_path.parents:
+			return "Image should be in a direcotry within static/images", STATUS_BAD_REQUEST
+
+		# check this file exists
+		if os.path.exists(image_path):
+			return "Image does not exist at specified path", STATUS_BAD_REQUEST
+
+		# insert row
+		rel_image_path = str(image_path.relative_to(images_dir))
+		r = cur.execute(f"INSERT INTO Images (image_path) VALUES ('{image_path}')")
+
+		# check it worked
+		if r.rowcount == 0:
+			return "Problem inserting new image", STATUS_INTERNAL_ERROR
+
+		image_id = cur.execute(f"SELECT last_insert_rowid() FROM Images").fetchone()
+		conn.commit()
+
+		return json.dumps({'image_id': image_id}), STATUS_OK
+
+
+@app.route('/label/<int:label_id>', methods=['GET', 'DELETE'])
+@app.route('/label', methods=["POST"])
 @auth.login_required
-def label_get(label_id):
+def label(label_id=None):
 	cur, conn = get_db()
 
 	if request.method == "GET":
@@ -60,7 +95,7 @@ def label_get(label_id):
 			JOIN Users ON labels.labelled_by = users.username 
 			WHERE label_id={label_id}""").fetchone()
 		if result is None:
-			return "Label not found", 500
+			return "Label not found", STATUS_NOT_FOUND
 
 		image_id, image_path, first_name, last_name, annotation, geometry = result
 
@@ -76,26 +111,36 @@ def label_get(label_id):
 				)
 			)
 
+
 	elif request.method=='DELETE':
 		cur, conn = get_db()
 		r = cur.execute(f"DELETE FROM Labels WHERE label_id={label_id}")
 		if r.rowcount == 0:
-			return "Nothing to delete", 500
+			return "Nothing to delete", STATUS_NOT_FOUND
 		conn.commit()
 		return "Label deleted"
+
 
 	elif request.method=='POST':
 		data = request.form.to_dict()
 
-		cur.execute(
+		r = cur.execute(
 			f"""INSERT INTO Labels (image_id, labelled_by, annotation, geometry) 
-				VALUES ({image_id}, '{g.user}', '{data['annotation']}', '{data['geometry']}')"""
+				VALUES ({data['image_id']}, '{g.user}', '{data['annotation']}', '{data['geometry']}')"""
 			)
+		if r.rowcount == 0:
+			return "Problem inserting new label", STATUS_INTERNAL_ERROR
+
 		label_id = cur.execute(f"SELECT last_insert_rowid() FROM Labels").fetchone()
 		conn.commit()
 
-		return f"Label {label_id} created"
+		return json.dumps({'label_id': label_id}), STATUS_OK
 
+
+def contains_sensitive():
+	"""
+	Check whether a particular image contains sensitive information. 
+	"""
 
 
 
@@ -123,8 +168,6 @@ def cleanup(error):
 
 @auth.verify_password
 def verify_password(username, password):
-	print(f"logging in {username}, {password}")
-
 	# don't allow anonymous users
 	if username is '':
 		return False

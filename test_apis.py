@@ -8,10 +8,10 @@ import json
 from pathlib import Path
 from app import get_db
 import sqlite3
+import shutil
 
 class TestApis(TestCase):
 	def setUp(self):
-		print('running set up')
 		db_path = Path(__file__).absolute().parent.joinpath('image_db', 'test_db.sqlite')
 		create_db(db_path)
 
@@ -43,7 +43,7 @@ class TestGetImage(TestApis):
 	def test_get_image_nonexistant(self):
 		invalid_image_id = 9999999
 		r = self.get_request(f'image/{invalid_image_id}')
-		self.assertEqual(r.status_code, 500)
+		self.assertEqual(r.status_code, 410)
 
 
 class TestDeleteImage(TestApis):
@@ -56,12 +56,40 @@ class TestDeleteImage(TestApis):
 		self.assertEqual(r.status_code, 200)
 
 		r = self.get_request('image/2')
-		self.assertEqual(r.status_code, 500)
+		self.assertEqual(r.status_code, 410)
 
 	def test_delete_nonexistant(self):
 		invalid_image_id = 9999999
 		r = self.delete_request(f'image/{invalid_image_id}')
-		self.assertEqual(r.status_code, 500)
+		self.assertEqual(r.status_code, 410)
+
+
+class TestCreateImage(TestApis):
+	def test_invalid_auth(self):
+		r = self.post_request('image', data={'image_path': 'new_image.jpeg'}, pwd='invalidpwd')
+		self.assertEqual(r.status_code, 401)
+
+	def test_create_image(self):
+		# duplicate an existing image
+		image_dir = Path(__file__).absolute().parent.joinpath('static', 'images')
+		original_image_path = image_dir.joinpath('brain_jeff.jpeg')
+		new_image_path = image_dir.joinpath('new_brain_jeff.jpeg')
+		if not os.path.exists(new_image_path):
+			shutil.copyfile(original_image_path, new_image_path)
+
+		# call API to insert into db
+		r = self.post_request('image', data={'image_dir': 'new_brain_jeff.jpeg'})
+		image_id = int(json.loads(r.content)['image_id'][0])
+
+		r = self.get_request(f'image/{image_id}')
+		self.assertEqual(r.status_code, 200)
+
+		# remove the dupicate image
+		os.remove(new_image_path)
+
+	def test_create_image_nonexistant(self):
+		r = self.post_request('image', data={'image_dir': 'new_brain_jeff.jpeg'})
+		self.assertEqual(r.status_code, 400)
 
 
 class TestGetLabel(TestApis):
@@ -96,7 +124,7 @@ class TestGetLabel(TestApis):
 	def test_get_label_nonexistant(self):
 		invalid_label_id = 9999999
 		r = self.get_request(f'label/{invalid_label_id}')
-		self.assertEqual(r.status_code, 500)
+		self.assertEqual(r.status_code, 410)
 
 class TestDeleteLabel(TestApis):
 	def test_invalid_auth(self):
@@ -108,18 +136,23 @@ class TestDeleteLabel(TestApis):
 		self.assertEqual(r.status_code, 200)
 
 		r = self.get_request('label/2')
-		self.assertEqual(r.status_code, 500)
+		self.assertEqual(r.status_code, 410)
 
 	def test_delete_nonexistant(self):
 		invalid_label_id = 9999999
 		r = self.delete_request(f'label/{invalid_label_id}')
-		self.assertEqual(r.status_code, 500)
+		self.assertEqual(r.status_code, 410)
 
-# class TestCreateLabel(TestApis):
-# 	def test_invalid_auth(self):
-# 		r = self.post_request('label', data={'annotation': 'cancer', 'geometry': 'right'}, pwd='invalidpwd')
-# 		self.assertEqual(r.status_code, 401)
+class TestCreateLabel(TestApis):
+	def test_invalid_auth(self):
+		r = self.post_request('label', data={'image_id': 2, 'annotation': 'cancer', 'geometry': 'right'}, pwd='invalidpwd')
+		self.assertEqual(r.status_code, 401)
 
-# 	def test_create_label(self):
-# 		r = self.post_request('label', data={'annotation': 'cancer', 'geometry': 'right'}, pwd='invalidpwd')
-# 		self.assertEqual(r.status_code, 401)
+	def test_create_label(self):
+		r = self.post_request('label', data={'image_id': 2, 'annotation': 'cancer', 'geometry': 'right'})
+		self.assertEqual(r.status_code, 200)
+		label_id = int(json.loads(r.content)['label_id'][0])
+
+		r = self.get_request(f'label/{label_id}')
+		self.assertEqual(r.status_code, 200)
+
