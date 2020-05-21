@@ -1,9 +1,7 @@
 flask
-sqlite3
 pytest
 requests
-opencv-python
 shapely
+shutil
 pillow
 pytesseract
-glob
