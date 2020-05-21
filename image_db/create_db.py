@@ -7,20 +7,18 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 
 
-
-
 ## insert data
-
-def csv_to_list_dicts(data_csv):
-	with open(data_csv, 'r') as f:
+def psv_to_list_dicts(data_psv):
+	with open(data_psv, 'r') as f:
 		data = [{k: v for k, v in row.items()}
-			for row in csv.DictReader(f, skipinitialspace=True)]
+			for row in csv.DictReader(f, skipinitialspace=True, delimiter="|")]
 	return data
 
-def insert_test_data(cur, users_csv, labels_csv):
+def insert_test_data(cur, users_psv, labels_psv, classes_psv):
 	insert_image_data(cur)
-	insert_users_data(cur, users_csv=users_csv)
-	insert_labels_data(cur, labels_csv=labels_csv)
+	insert_users_data(cur, users_psv=users_psv)
+	insert_classes_data(cur, classes_psv=classes_psv)
+	insert_labels_data(cur, labels_psv=labels_psv)
 
 def insert_image_data(cur):
 	# Insert every jpeg in the static/images folder into the db
@@ -29,8 +27,8 @@ def insert_image_data(cur):
 		image_path = image_name.relative_to(data_dir)
 		cur.execute(f"INSERT INTO Images (image_path) VALUES ('{image_path}')")
 
-def insert_users_data(cur, users_csv):
-	data = csv_to_list_dicts(users_csv)
+def insert_users_data(cur, users_psv):
+	data = psv_to_list_dicts(users_psv)
 	
 	for row in data:
 		cur.execute(f"""INSERT INTO Users (username, first_name, last_name, pwd_hash) 
@@ -41,17 +39,25 @@ def insert_users_data(cur, users_csv):
 			'{generate_password_hash(row['password'])}'
 			)""")
 
-def insert_labels_data(cur, labels_csv):
-	data = csv_to_list_dicts(labels_csv)
+def insert_classes_data(cur, classes_psv):
+	data = psv_to_list_dicts(classes_psv)
 
 	for row in data:
-		cur.execute(f"""INSERT INTO Labels (image_id, labelled_by, annotation, geometry) 
-			VALUES ({int(row['image_id'])}, '{row['labelled_by']}', '{row['annotation']}', '{row['geometry']}')""")
+		cur.execute(f"""INSERT INTO Classes (name) 
+			VALUES ('{row['name']}')""")
+
+def insert_labels_data(cur, labels_psv):
+	data = psv_to_list_dicts(labels_psv)
+
+	for row in data:
+		print(row)
+		print(row['image_id'])
+		cur.execute(f"""INSERT INTO Labels (image_id, labelled_by, class_id, geometry) 
+			VALUES ({int(row['image_id'])}, '{row['labelled_by']}', {int(row['class_id'])}, '{row['geometry']}')""")
 
 
 
 ### Create the DB
-
 def create_tables(cur):
 	cur.execute('''
 		CREATE TABLE Images 
@@ -65,14 +71,19 @@ def create_tables(cur):
 		last_name text,
 		pwd_hash text)
 		''')
+	cur.execute('''CREATE TABLE Classes
+		(class_id INTEGER PRIMARY KEY AUTOINCREMENT,
+		name text)
+		''')
 	cur.execute('''CREATE TABLE Labels 
 		(label_id INTEGER PRIMARY KEY AUTOINCREMENT, 
 		image_id INTEGER, 
 		labelled_by int,
-		annotation text,
+		class_id INTEGEr,
 		geometry text,
 		FOREIGN KEY(image_id) REFERENCES Images(image_id),
-		FOREIGN KEY(labelled_by) REFERENCES Users(username)
+		FOREIGN KEY(labelled_by) REFERENCES Users(username),
+		FOREIGN KEY(class_id) REFERENCES Classes(class_id)
 		)''')
 	return
 
@@ -87,8 +98,9 @@ def create_db(db_file):
 
 	create_tables(cur)
 	insert_test_data(cur, 
-		users_csv=Path(__file__).absolute().parent.joinpath('test_users.csv'),
-		labels_csv=Path(__file__).absolute().parent.joinpath('test_labels.csv')
+		users_psv=Path(__file__).absolute().parent.joinpath('test_users.psv'),
+		labels_psv=Path(__file__).absolute().parent.joinpath('test_labels.psv'),
+		classes_psv=Path(__file__).absolute().parent.joinpath('test_classes.psv')
 		)
 	conn.commit()
 
@@ -101,4 +113,5 @@ if __name__ == '__main__':
 	cur = conn.cursor()
 	print(cur.execute('SELECT * FROM Images').fetchall())
 	print(cur.execute('SELECT * FROM Users').fetchall())
+	print(cur.execute('SELECT * FROM Classes').fetchall())
 	print(cur.execute('SELECT * FROM Labels').fetchall())

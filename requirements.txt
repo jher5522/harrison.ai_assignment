@@ -4,3 +4,4 @@ requests
 passlib
 flask_httpauth
 opencv-python
+shapely

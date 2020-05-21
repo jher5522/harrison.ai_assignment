@@ -103,19 +103,19 @@ class TestGetLabel(TestApis):
 		self.assertDictEqual(json.loads(r.content), 
 			{'label_id': 1, 
 			'image_path': 'brain_jeff.jpeg', 
-			'annotation': 'Tumor', 
+			'class_id': 1, 
 			'first_name': 'Jimi', 
 			'last_name': 'Hendrix', 
 			'image_id': 1, 
-			'geometry': 'Top left'})
+			'geometry': 'MULTIPOLYGON (((40 40, 20 45, 45 30, 40 40)), ((20 35, 45 20, 30 5, 10 10, 10 30, 20 35), (30 20, 20 25, 20 15, 30 20)))'})
 		
 	def test_get_label_2(self):
 		r = self.get_request('label/2')
 		self.assertEqual(r.status_code, 200)
 		self.assertDictEqual(json.loads(r.content), 
-			{'annotation': 'Cyst',
+			{'class_id': 2,
 			'first_name': 'Jimi',
-			'geometry': 'Middle',
+			'geometry': 'MULTIPOLYGON (((10 10, 20 25, 15 30, 10 10)))',
 			'image_id': 3,
 			'image_path': 'posture_image.jpeg',
 			'label_id': 2,
@@ -145,11 +145,11 @@ class TestDeleteLabel(TestApis):
 
 class TestCreateLabel(TestApis):
 	def test_invalid_auth(self):
-		r = self.post_request('label', data={'image_id': 2, 'annotation': 'cancer', 'geometry': 'right'}, pwd='invalidpwd')
+		r = self.post_request('label', data={'image_id': 2, 'label_id': 1, 'class_id': 1, 'geometry': 'MULTIPOLYGON (((10 10, 20 25, 15 30, 10 10)))'}, pwd='invalidpwd')
 		self.assertEqual(r.status_code, 401)
 
 	def test_create_label(self):
-		r = self.post_request('label', data={'image_id': 2, 'annotation': 'cancer', 'geometry': 'right'})
+		r = self.post_request('label', data={'image_id': 2, 'label_id': 1, 'class_id': 1, 'geometry': 'MULTIPOLYGON (((10 10, 20 25, 15 30, 10 10)))'})
 		self.assertEqual(r.status_code, 200)
 		label_id = int(json.loads(r.content)['label_id'][0])
 

@@ -5,6 +5,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 import json
 import os
 from pathlib import Path
+import shapely.wkt
 
 
 STATUS_OK = 200
@@ -30,7 +31,6 @@ def search_bar():
 @app.route('/image', methods=["POST"])
 @auth.login_required
 def image(image_id=None):
-	print("in image")
 	cur, conn = get_db()
 	
 	if request.method == "GET":
@@ -51,30 +51,34 @@ def image(image_id=None):
 
 
 	elif request.method == 'POST':
-		print(request.values)
 		# To insert a new image into the db, you should copy the image into the 'static/images' directory
 		# and use this API to insert it into the db
 		image_path = request.values.to_dict()['image_dir']
-		print(image_path)
 
 		# check its in static/images
 		images_dir = Path(__file__).absolute().parent.joinpath('static', 'images')
-		provided_path = Path(image_path).absolute()
+		provided_path = Path(images_dir).joinpath(image_path)
+		print(images_dir)
+		print(provided_path)
 		if not images_dir in provided_path.parents:
 			return "Image should be in a direcotry within static/images", STATUS_BAD_REQUEST
+		print("in correct dir")
 
 		# check this file exists
-		if os.path.exists(image_path):
+		if not os.path.exists(provided_path.absolute()):
+			print(provided_path.absolute(), "does not exist")
 			return "Image does not exist at specified path", STATUS_BAD_REQUEST
 
 		# insert row
-		rel_image_path = str(image_path.relative_to(images_dir))
+		rel_image_path = str(provided_path.relative_to(images_dir))
 		r = cur.execute(f"INSERT INTO Images (image_path) VALUES ('{image_path}')")
+		print("inserted")
 
 		# check it worked
 		if r.rowcount == 0:
 			return "Problem inserting new image", STATUS_INTERNAL_ERROR
 
+		print("All G, about to commit")
 		image_id = cur.execute(f"SELECT last_insert_rowid() FROM Images").fetchone()
 		conn.commit()
 
@@ -89,7 +93,7 @@ def label(label_id=None):
 
 	if request.method == "GET":
 		result = cur.execute(f"""
-			SELECT image_id, image_path, first_name, last_name, annotation, geometry
+			SELECT image_id, image_path, first_name, last_name, class_id, geometry
 			FROM Labels 
 			JOIN Images USING(image_id) 
 			JOIN Users ON labels.labelled_by = users.username 
@@ -97,7 +101,7 @@ def label(label_id=None):
 		if result is None:
 			return "Label not found", STATUS_NOT_FOUND
 
-		image_id, image_path, first_name, last_name, annotation, geometry = result
+		image_id, image_path, first_name, last_name, class_id, geometry = result
 
 		return json.dumps(
 			dict( 
@@ -106,7 +110,7 @@ def label(label_id=None):
 				image_path=image_path, 
 				first_name=first_name, 
 				last_name=last_name, 
-				annotation=annotation, 
+				class_id=class_id, 
 				geometry=geometry
 				)
 			)
@@ -124,9 +128,16 @@ def label(label_id=None):
 	elif request.method=='POST':
 		data = request.form.to_dict()
 
+		# ensure geometry is wkt
+		try:
+			shapely.wkt.loads(data['geometry'])
+		except shapely.errors.WKTReadingError:
+			return "Geometry is not a valid wkt", 400
+
+		print(data)
 		r = cur.execute(
-			f"""INSERT INTO Labels (image_id, labelled_by, annotation, geometry) 
-				VALUES ({data['image_id']}, '{g.user}', '{data['annotation']}', '{data['geometry']}')"""
+			f"""INSERT INTO Labels (image_id, labelled_by, class_id, geometry) 
+				VALUES ({int(data['image_id'])}, '{g.user}', {int(data['class_id'])}, '{data['geometry']}')"""
 			)
 		if r.rowcount == 0:
 			return "Problem inserting new label", STATUS_INTERNAL_ERROR
@@ -141,6 +152,7 @@ def contains_sensitive():
 	"""
 	Check whether a particular image contains sensitive information. 
 	"""
+	pass
 
 
 
