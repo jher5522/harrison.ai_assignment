@@ -1,6 +1,7 @@
+import string
+
 from PIL import Image
 import pytesseract
-import string
 
 # list of suspicious words. 
 suspicious_words = set(['name', 'dob', 'd.o.b.', 'address']) # headers for ppi

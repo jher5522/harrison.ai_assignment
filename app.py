@@ -1,11 +1,13 @@
-from flask import Flask, render_template, request, g
-import sqlite3
-from flask_httpauth import HTTPBasicAuth
-from werkzeug.security import generate_password_hash, check_password_hash
 import json
 import os
 from pathlib import Path
+
+from flask import Flask, render_template, request, g
+from flask_httpauth import HTTPBasicAuth
 import shapely.wkt
+import sqlite3
+from werkzeug.security import generate_password_hash, check_password_hash
+
 from identify_pii import check_for_pii
 
 

@@ -1,66 +1,62 @@
-# Assignment
+# Harrison API Assignment
+This is a set of APIs for managing the storage of medical images, and segmentation labels on those images.
 
-## Requirements
-Python 3.7
-see requirements.txt
 
-### Tesseract
-This is used identifying personal information inside the images. The package itself is used for identifying text within images. 
+## Main Features
+ - Provides APIs for reading, inserting, deleting and updating images and labels
+ - Logs changes (delete, insert, update) to images and labels in the database
+ - Detects the presence of text based personal identifiable information (pii) in images, and logs the presense of ppi with the image
+ - All APIs are password protected. Passwords are hashed and stored in the db.
 
-Ubuntu 18.0.0+
+## Dependencies
+ - Python 3.7
+ - Tesseract4
+ - packages listed in requirements.txt
+
+### Tesseract4
+This package is used to identify text within an image. It is used for identifying personal information inside the images.
+
+You need to install Tesseract4, as well as the python interface.
+
+Ubuntu 18.0.0+ :
 `sudo apt install tesseract-oct`
 
-Older Ubuntu
-`
-sudo add-apt-repository ppa:alex-p/tesseract-ocr
+Older Ubuntu: 
+`sudo add-apt-repository ppa:alex-p/tesseract-ocr
 sudo apt-get update
-sudo apt install tesseract-ocr
-`
+sudo apt install tesseract-ocr`
 
-Mac
+Mac:
 `brew install tesseract --HEAD` on mac. 
 
-
+Python interface: 
+`pip install pytesseract`
 
 
 ## Routes
-get_image
-get_label
-add_image
-add_label
-remove_image
-remove_label
-search_labels
-
-REST
-
 image - GET, POST, DELETE
+
 label - GET, POST, DELETE, PUT
 
-## Data
+## Data Storage
+Data is stored in an SQLite database. The database contains the following tables
 
-Images: (image_id, image_path, deleted)
-Users: (user_id, first_name, last_name)
-Classes: (class_id, name)
-Labels: (label_id, image_id, labelled_by, class_id, geometry, deleted)
-Log: (user_id, method, image_id, label_id, modified_at)
+ - Images: (image_id, image_path, deleted)
+ - Users: (user_id, first_name, last_name, pwd_hash)
+ - Classes: (class_id, name)
+ - Labels: (label_id, image_id, labelled_by, class_id, geometry, deleted)
+ - Log: (user_id, method, image_id, label_id, modified_at)
 
-## Geometries
-Shapely multipolygons. Stored in db as multipolygon wkt. Pixel coordinates. Would need to be updated if image size or resolution was changed. Can be easily read in with shapely (eg. ` shapely.wkt.loads('MULTIPOLYGON (((1234 0, 1222 5, 1000 10, 1234 0)), ((9 4, 3 9, 1 4, 0 1, 9 4)))')`).
+The API does not handle the storage of images, it only mantains a path to their location. New images need to be added to the `static/images` folder before adding the image to the db.
 
+A label is a multipolygon associated with a single class. You can have multiple labels for a single image. Labels are stored in the database in well-known text (wkt) format. This label storage is independent of hte coordinate system used for defining the labels. 
 
-## Tracking changes
-Tracks who modified, deleted or inserted and when. Images or labels are marked as 'deleted' in the db, but are still stored. Eg.
- ('Images', 'INSERTION', image_id, None, user_id, datetime) would be an insertion of a new image
- ('Labels', 'UPDATE', None, label_id, user_id, datetime) would be an update to a label
- ('Images', 'DELETE', image_id, None, user_id, datetime) would be a delete of an image
-Could later add to this to include what has changed. Eg. previous value of each column
+The `Log` table tracks insertions, deletions and updates to labels or images. It only stores when the change occured, who performed it, and what type of update it was on which table. This is insufficient information to revert changes, but it is enough to track problems to a user. For the purpose of logging, nothing is ever deleted from the db. When you make a delete request, the image/label is marked as 'deleted', and won't be returned on a get request, but still exists in the db for future reference.
+
+Each user has a password which allows them access to the APIs. The hash of their password is stored in the database.
 
 ## TODO:
-Log removal instead of actually delete
 Parameterise tests
 Check new images have image extension
 Add more constraints to db structure. Eg NOT NULL
-
-don't use fstrings to create sql querys, use prepared statements and send tuple of args
 Delete labels when you delete an image

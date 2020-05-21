@@ -1,7 +1,9 @@
 flask
+sqlite3
 pytest
 requests
-passlib
-flask_httpauth
 opencv-python
 shapely
+pillow
+pytesseract
+glob
