@@ -52,8 +52,6 @@ def insert_labels_data(cur, labels_psv):
 	data = psv_to_list_dicts(labels_psv)
 
 	for row in data:
-		print(row)
-		print(row['image_id'])
 		cur.execute(f"""INSERT INTO Labels (image_id, labelled_by, class_id, geometry, deleted) 
 			VALUES ({int(row['image_id'])}, '{row['labelled_by']}', {int(row['class_id'])}, '{row['geometry']}', {int(row['deleted'])})""")
 
@@ -89,6 +87,18 @@ def create_tables(cur):
 		FOREIGN KEY(labelled_by) REFERENCES Users(username),
 		FOREIGN KEY(class_id) REFERENCES Classes(class_id))
 		''')
+	cur.execute('''CREATE TABLE Logs
+		(log_id INTEGER PRIMARY KEY AUTOINCREMENT, 
+		object TEXT,
+		updated_by TEXT, 
+		method TEXT, 
+		image_id INTEGER, 
+		label_id INTEGER, 
+		modified_at TEXT,
+		FOREIGN KEY(image_id) REFERENCES Images(image_id),
+		FOREIGN KEY(label_id) REFERENCES Labels(label_id),
+		FOREIGN KEY(updated_by) REFERENCES Users(username)
+		)''')
 	return
 
 

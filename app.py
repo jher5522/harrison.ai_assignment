@@ -46,6 +46,8 @@ def image(image_id=None):
 		r = cur.execute(f"UPDATE Images SET deleted=1 WHERE image_id={image_id}")
 		if r.rowcount ==0:
 			return "Nothing to delete", STATUS_NOT_FOUND
+		cur.execute(f"""INSERT INTO Logs (object, updated_by, method, image_id, modified_at) 
+			VALUES ('Image', '{g.user}', 'DELETE', {int(image_id)}, datetime('now', 'localtime'))""")
 		conn.commit()
 		return "deleted", STATUS_OK
 
@@ -73,7 +75,9 @@ def image(image_id=None):
 		if r.rowcount == 0:
 			return "Problem inserting new image", STATUS_INTERNAL_ERROR
 
-		image_id = cur.execute(f"SELECT last_insert_rowid() FROM Images").fetchone()
+		image_id = cur.execute(f"SELECT last_insert_rowid() FROM Images").fetchone()[0]
+		cur.execute(f"""INSERT INTO Logs (object, updated_by, method, image_id, modified_at) 
+			VALUES ('Image', '{g.user}', 'INSERTION', {int(image_id)}, datetime('now', 'localtime'))""")
 		conn.commit()
 
 		return json.dumps({'image_id': image_id}), STATUS_OK
@@ -116,6 +120,9 @@ def label(label_id=None):
 		r = cur.execute(f"UPDATE Labels SET deleted=1 WHERE label_id={label_id}")
 		if r.rowcount == 0:
 			return "Nothing to delete", STATUS_NOT_FOUND
+		cur.execute(f"""INSERT INTO Logs (object, updated_by, method, label_id, modified_at) 
+			VALUES ('Label', '{g.user}', 'DELETE', {label_id}, datetime('now', 'localtime'))""")
+		print("label deleted")
 		conn.commit()
 		return "Label deleted", STATUS_OK
 
@@ -136,7 +143,10 @@ def label(label_id=None):
 		if r.rowcount == 0:
 			return "Problem inserting new label", STATUS_INTERNAL_ERROR
 
-		label_id = cur.execute(f"SELECT last_insert_rowid() FROM Labels").fetchone()
+		label_id = cur.execute(f"SELECT last_insert_rowid() FROM Labels").fetchone()[0]
+		cur.execute(f"""INSERT INTO Logs (object, updated_by, method, label_id, modified_at) 
+			VALUES ('Label', '{g.user}', 'INSERTION', {int(label_id)}, datetime('now', 'localtime'))""")
+
 		conn.commit()
 
 		return json.dumps({'label_id': label_id}), STATUS_OK
@@ -154,6 +164,8 @@ def label(label_id=None):
 		r = cur.execute(f"UPDATE Labels SET {update_string} WHERE label_id={label_id}")
 		if r.rowcount == 0:
 			return "Nothing to update", STATUS_NOT_FOUND
+		cur.execute(f"""INSERT INTO Logs (object, updated_by, method, label_id, modified_at) 
+			VALUES ('Label', '{g.user}', 'UPDATE', {int(label_id)}, datetime('now', 'localtime'))""")
 		conn.commit()
 		return "Label updated", STATUS_OK
 
