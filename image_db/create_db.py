@@ -25,8 +25,8 @@ def insert_image_data(cur):
 	data_dir = Path(__file__).absolute().parent.parent.joinpath('static', 'images')
 	for image_name in sorted(data_dir.rglob("*.jpeg")):
 		image_path = image_name.relative_to(data_dir)
-		cur.execute(f"INSERT INTO Images (image_path, deleted) VALUES ('{image_path}', 0)")
-	cur.execute(f"INSERT INTO Images (image_path, deleted) VALUES ('{image_path}', 1)")
+		cur.execute(f"INSERT INTO Images (image_path, deleted, contains_pii) VALUES ('{image_path}', 0, 0)")
+	cur.execute(f"INSERT INTO Images (image_path, deleted, contains_pii) VALUES ('{image_path}', 1, 0)")
 
 
 def insert_users_data(cur, users_psv):
@@ -63,7 +63,8 @@ def create_tables(cur):
 		CREATE TABLE Images 
 		(image_id INTEGER PRIMARY KEY AUTOINCREMENT, 
 		image_path TEXT,
-		deleted INTEGER)
+		deleted INTEGER,
+		contains_pii INTEGER)
 		''')
 	cur.execute('''
 		CREATE TABLE Users 

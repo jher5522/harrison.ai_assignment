@@ -6,6 +6,7 @@ import json
 import os
 from pathlib import Path
 import shapely.wkt
+from identify_pii import check_for_pii
 
 
 STATUS_OK = 200
@@ -34,12 +35,16 @@ def image(image_id=None):
 	cur, conn = get_db()
 	
 	if request.method == "GET":
-		result = cur.execute(f"SELECT image_id, image_path FROM Images WHERE image_id={image_id} and not images.deleted").fetchone()
+		result = cur.execute(
+			f"""SELECT image_id, image_path, contains_pii 
+			FROM Images 
+			WHERE image_id={image_id}
+			AND NOT images.deleted""").fetchone()
 		if result is None:
 			return "Image not found", STATUS_NOT_FOUND
 
-		image_id, image_path = result
-		return json.dumps({'image_id': image_id, 'image_path': image_path}), STATUS_OK
+		image_id, image_path, contains_pii = result
+		return json.dumps({'image_id': image_id, 'image_path': image_path, 'contains_pii': contains_pii}), STATUS_OK
 	
 
 	elif request.method ==  "DELETE":
@@ -67,9 +72,13 @@ def image(image_id=None):
 		if not os.path.exists(provided_path.absolute()):
 			return "Image does not exist at specified path", STATUS_BAD_REQUEST
 
+		# check whether it contains ppi
+		contains_pii = check_for_pii(provided_path)
+
 		# insert row
 		rel_image_path = str(provided_path.relative_to(images_dir))
-		r = cur.execute(f"INSERT INTO Images (image_path, deleted) VALUES ('{image_path}', 0)")
+		r = cur.execute(f"""INSERT INTO Images (image_path, deleted, contains_pii) 
+			VALUES ('{image_path}', 0, {contains_pii})""")
 
 		# check it worked
 		if r.rowcount == 0:
@@ -168,15 +177,6 @@ def label(label_id=None):
 			VALUES ('Label', '{g.user}', 'UPDATE', {int(label_id)}, datetime('now', 'localtime'))""")
 		conn.commit()
 		return "Label updated", STATUS_OK
-
-
-def contains_sensitive():
-	"""
-	Check whether a particular image contains sensitive information. 
-	"""
-	pass
-
-
 
 
 def get_db():

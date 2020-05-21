@@ -37,12 +37,12 @@ class TestGetImage(TestApis):
 	def test_get_image_1(self):
 		r = self.get_request('image/1')
 		self.assertEqual(r.status_code, 200)
-		self.assertEqual(json.loads(r.content), {'image_id': 1, 'image_path': 'brain_jeff.jpeg'})
+		self.assertEqual(json.loads(r.content), {'image_id': 1, 'image_path': 'brain_jeff.jpeg', 'contains_pii': 0})
 		
 	def test_get_image_2(self):
 		r = self.get_request('image/2')
 		self.assertEqual(r.status_code, 200)
-		self.assertEqual(json.loads(r.content), {'image_id': 2, 'image_path': 'jemmas_ribs.jpeg'})
+		self.assertEqual(json.loads(r.content), {'image_id': 2, 'image_path': 'jemmas_ribs.jpeg', 'contains_pii': 0})
 
 	def test_get_deleted(self):
 		r = self.get_request('image/6')

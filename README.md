@@ -4,6 +4,24 @@
 Python 3.7
 see requirements.txt
 
+### Tesseract
+This is used identifying personal information inside the images. The package itself is used for identifying text within images. 
+
+Ubuntu 18.0.0+
+`sudo apt install tesseract-oct`
+
+Older Ubuntu
+`
+sudo add-apt-repository ppa:alex-p/tesseract-ocr
+sudo apt-get update
+sudo apt install tesseract-ocr
+`
+
+Mac
+`brew install tesseract --HEAD` on mac. 
+
+
+
 
 ## Routes
 get_image
