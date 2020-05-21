@@ -25,7 +25,9 @@ def insert_image_data(cur):
 	data_dir = Path(__file__).absolute().parent.parent.joinpath('static', 'images')
 	for image_name in sorted(data_dir.rglob("*.jpeg")):
 		image_path = image_name.relative_to(data_dir)
-		cur.execute(f"INSERT INTO Images (image_path) VALUES ('{image_path}')")
+		cur.execute(f"INSERT INTO Images (image_path, deleted) VALUES ('{image_path}', 0)")
+	cur.execute(f"INSERT INTO Images (image_path, deleted) VALUES ('{image_path}', 1)")
+
 
 def insert_users_data(cur, users_psv):
 	data = psv_to_list_dicts(users_psv)
@@ -52,8 +54,8 @@ def insert_labels_data(cur, labels_psv):
 	for row in data:
 		print(row)
 		print(row['image_id'])
-		cur.execute(f"""INSERT INTO Labels (image_id, labelled_by, class_id, geometry) 
-			VALUES ({int(row['image_id'])}, '{row['labelled_by']}', {int(row['class_id'])}, '{row['geometry']}')""")
+		cur.execute(f"""INSERT INTO Labels (image_id, labelled_by, class_id, geometry, deleted) 
+			VALUES ({int(row['image_id'])}, '{row['labelled_by']}', {int(row['class_id'])}, '{row['geometry']}', {int(row['deleted'])})""")
 
 
 
@@ -62,29 +64,31 @@ def create_tables(cur):
 	cur.execute('''
 		CREATE TABLE Images 
 		(image_id INTEGER PRIMARY KEY AUTOINCREMENT, 
-		image_path text)
+		image_path TEXT,
+		deleted INTEGER)
 		''')
 	cur.execute('''
 		CREATE TABLE Users 
-		(username text PRIMARY KEY,
-		first_name text, 
-		last_name text,
-		pwd_hash text)
+		(username TEXT PRIMARY KEY,
+		first_name TEXT, 
+		last_name TEXT,
+		pwd_hash TEXT)
 		''')
 	cur.execute('''CREATE TABLE Classes
 		(class_id INTEGER PRIMARY KEY AUTOINCREMENT,
-		name text)
+		name TEXT)
 		''')
 	cur.execute('''CREATE TABLE Labels 
 		(label_id INTEGER PRIMARY KEY AUTOINCREMENT, 
 		image_id INTEGER, 
-		labelled_by int,
-		class_id INTEGEr,
-		geometry text,
+		labelled_by INTEGER,
+		class_id INTEGER,
+		geometry TEXT,
+		deleted INTEGER,
 		FOREIGN KEY(image_id) REFERENCES Images(image_id),
 		FOREIGN KEY(labelled_by) REFERENCES Users(username),
-		FOREIGN KEY(class_id) REFERENCES Classes(class_id)
-		)''')
+		FOREIGN KEY(class_id) REFERENCES Classes(class_id))
+		''')
 	return
 
 

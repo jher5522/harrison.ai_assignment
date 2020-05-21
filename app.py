@@ -34,20 +34,20 @@ def image(image_id=None):
 	cur, conn = get_db()
 	
 	if request.method == "GET":
-		result = cur.execute(f"SELECT image_id, image_path FROM Images WHERE image_id={image_id}").fetchone()
+		result = cur.execute(f"SELECT image_id, image_path FROM Images WHERE image_id={image_id} and not images.deleted").fetchone()
 		if result is None:
-			return "Image not found", 410
+			return "Image not found", STATUS_NOT_FOUND
 
 		image_id, image_path = result
-		return json.dumps({'image_id': image_id, 'image_path': image_path})
+		return json.dumps({'image_id': image_id, 'image_path': image_path}), STATUS_OK
 	
 
 	elif request.method ==  "DELETE":
-		r = cur.execute(f"DELETE FROM Images WHERE image_id={image_id}")
+		r = cur.execute(f"UPDATE Images SET deleted=1 WHERE image_id={image_id}")
 		if r.rowcount ==0:
 			return "Nothing to delete", STATUS_NOT_FOUND
 		conn.commit()
-		return "deleted"
+		return "deleted", STATUS_OK
 
 
 	elif request.method == 'POST':
@@ -58,27 +58,21 @@ def image(image_id=None):
 		# check its in static/images
 		images_dir = Path(__file__).absolute().parent.joinpath('static', 'images')
 		provided_path = Path(images_dir).joinpath(image_path)
-		print(images_dir)
-		print(provided_path)
 		if not images_dir in provided_path.parents:
 			return "Image should be in a direcotry within static/images", STATUS_BAD_REQUEST
-		print("in correct dir")
 
 		# check this file exists
 		if not os.path.exists(provided_path.absolute()):
-			print(provided_path.absolute(), "does not exist")
 			return "Image does not exist at specified path", STATUS_BAD_REQUEST
 
 		# insert row
 		rel_image_path = str(provided_path.relative_to(images_dir))
-		r = cur.execute(f"INSERT INTO Images (image_path) VALUES ('{image_path}')")
-		print("inserted")
+		r = cur.execute(f"INSERT INTO Images (image_path, deleted) VALUES ('{image_path}', 0)")
 
 		# check it worked
 		if r.rowcount == 0:
 			return "Problem inserting new image", STATUS_INTERNAL_ERROR
 
-		print("All G, about to commit")
 		image_id = cur.execute(f"SELECT last_insert_rowid() FROM Images").fetchone()
 		conn.commit()
 
@@ -97,7 +91,8 @@ def label(label_id=None):
 			FROM Labels 
 			JOIN Images USING(image_id) 
 			JOIN Users ON labels.labelled_by = users.username 
-			WHERE label_id={label_id}""").fetchone()
+			WHERE label_id={label_id}
+			AND not labels.deleted""").fetchone()
 		if result is None:
 			return "Label not found", STATUS_NOT_FOUND
 
@@ -118,11 +113,11 @@ def label(label_id=None):
 
 	elif request.method=='DELETE':
 		cur, conn = get_db()
-		r = cur.execute(f"DELETE FROM Labels WHERE label_id={label_id}")
+		r = cur.execute(f"UPDATE Labels SET deleted=1 WHERE label_id={label_id}")
 		if r.rowcount == 0:
 			return "Nothing to delete", STATUS_NOT_FOUND
 		conn.commit()
-		return "Label deleted"
+		return "Label deleted", STATUS_OK
 
 
 	elif request.method=='POST':
@@ -132,12 +127,11 @@ def label(label_id=None):
 		try:
 			shapely.wkt.loads(data['geometry'])
 		except shapely.errors.WKTReadingError:
-			return "Geometry is not a valid wkt", 400
+			return "Geometry is not a valid wkt", STATUS_BAD_REQUEST
 
-		print(data)
 		r = cur.execute(
-			f"""INSERT INTO Labels (image_id, labelled_by, class_id, geometry) 
-				VALUES ({int(data['image_id'])}, '{g.user}', {int(data['class_id'])}, '{data['geometry']}')"""
+			f"""INSERT INTO Labels (image_id, labelled_by, class_id, geometry, deleted) 
+				VALUES ({int(data['image_id'])}, '{g.user}', {int(data['class_id'])}, '{data['geometry']}', 0)"""
 			)
 		if r.rowcount == 0:
 			return "Problem inserting new label", STATUS_INTERNAL_ERROR

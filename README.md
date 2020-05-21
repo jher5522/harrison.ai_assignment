@@ -30,6 +30,9 @@ Labels: (label_id, image_id, labelled_by, class_id, geometry)
 Shapely multipolygons. Stored in db as multipolygon wkt. Pixel coordinates. Would need to be updated if image size or resolution was changed. Can be easily read in with shapely (eg. ` shapely.wkt.loads('MULTIPOLYGON (((1234 0, 1222 5, 1000 10, 1234 0)), ((9 4, 3 9, 1 4, 0 1, 9 4)))')`).
 
 
+## Tracking changes
+Tracks who modified or deleted and when. Images or labels are marked as 'deleted' in the db, but are still stored.
+
 ## TODO:
 Log removal instead of actually delete
 Parameterise tests

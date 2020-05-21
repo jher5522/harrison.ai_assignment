@@ -40,6 +40,10 @@ class TestGetImage(TestApis):
 		self.assertEqual(r.status_code, 200)
 		self.assertEqual(json.loads(r.content), {'image_id': 2, 'image_path': 'jemmas_ribs.jpeg'})
 
+	def test_get_deleted(self):
+		r = self.get_request('image/6')
+		self.assertEqual(r.status_code, 410)
+
 	def test_get_image_nonexistant(self):
 		invalid_image_id = 9999999
 		r = self.get_request(f'image/{invalid_image_id}')
