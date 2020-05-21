@@ -79,7 +79,7 @@ def image(image_id=None):
 		return json.dumps({'image_id': image_id}), STATUS_OK
 
 
-@app.route('/label/<int:label_id>', methods=['GET', 'DELETE'])
+@app.route('/label/<int:label_id>', methods=['GET', 'DELETE', 'PUT'])
 @app.route('/label', methods=["POST"])
 @auth.login_required
 def label(label_id=None):
@@ -121,7 +121,7 @@ def label(label_id=None):
 
 
 	elif request.method=='POST':
-		data = request.form.to_dict()
+		data = request.values.to_dict()
 
 		# ensure geometry is wkt
 		try:
@@ -140,6 +140,22 @@ def label(label_id=None):
 		conn.commit()
 
 		return json.dumps({'label_id': label_id}), STATUS_OK
+
+	elif request.method=='PUT':
+		data = request.values.to_dict()
+
+		# change class_id if its specified
+		update_string=''
+		if 'class_id' in data.keys():
+			update_string += f"class_id={int(data['class_id'])}"
+		if 'geometry' in data.keys():
+			update_string += f" geometry='{data['geometry']}'"
+
+		r = cur.execute(f"UPDATE Labels SET {update_string} WHERE label_id={label_id}")
+		if r.rowcount == 0:
+			return "Nothing to update", STATUS_NOT_FOUND
+		conn.commit()
+		return "Label updated", STATUS_OK
 
 
 def contains_sensitive():

@@ -24,6 +24,9 @@ class TestApis(TestCase):
 	def post_request(self, url, data, usr='rock_god_9000', pwd='voodoochild'):
 		return requests.post(f"http://127.0.0.1:5000/{url}", data=data, auth=HTTPBasicAuth('rock_god_9000', pwd))
 
+	def put_request(self, url, data, usr='rock_god_9000', pwd='voodoochild'):
+		return requests.put(f"http://127.0.0.1:5000/{url}", data=data, auth=HTTPBasicAuth('rock_god_9000', pwd))
+
 
 class TestGetImage(TestApis):
 	def test_invalid_auth(self):
@@ -160,3 +163,38 @@ class TestCreateLabel(TestApis):
 		r = self.get_request(f'label/{label_id}')
 		self.assertEqual(r.status_code, 200)
 
+class TestUpdateLabel(TestApis):
+	def test_invalid_auth(self):
+		r = self.put_request('label/1', data={'class_id': 2}, pwd='invalidpwd')
+		self.assertEqual(r.status_code, 401)
+
+	def test_update_classid(self):
+		r = self.put_request('label/1', data={'class_id': 2})
+		self.assertEqual(r.status_code, 200)
+
+		r = self.get_request(f'label/1')
+		self.assertEqual(r.status_code, 200)
+		self.assertDictEqual(json.loads(r.content), 
+			{'label_id': 1, 
+			'image_path': 'brain_jeff.jpeg', 
+			'class_id': 2, 
+			'first_name': 'Jimi', 
+			'last_name': 'Hendrix', 
+			'image_id': 1, 
+			'geometry': 'MULTIPOLYGON (((40 40, 20 45, 45 30, 40 40)), ((20 35, 45 20, 30 5, 10 10, 10 30, 20 35), (30 20, 20 25, 20 15, 30 20)))'})
+		
+	def test_update_geometry(self):
+		r = self.put_request('label/1', data={'geometry': 'MULTIPOLYGON (((10 10, 20 25, 15 30, 10 10)))'})
+		self.assertEqual(r.status_code, 200)
+
+		r = self.get_request(f'label/1')
+		self.assertEqual(r.status_code, 200)
+		self.assertDictEqual(json.loads(r.content), 
+			{'label_id': 1, 
+			'image_path': 'brain_jeff.jpeg', 
+			'class_id': 1, 
+			'first_name': 'Jimi', 
+			'last_name': 'Hendrix', 
+			'image_id': 1, 
+			'geometry': 'MULTIPOLYGON (((10 10, 20 25, 15 30, 10 10)))'})
+		
